@@ -1,6 +1,12 @@
 (defvar package-archives)
 (defvar package-archive-contents)
 
+(defvar my:backup-directory
+  (expand-file-name (concat user-emacs-directory "backups/"))
+  "Directory storing all backups and auto-save files.
+Must end with a trailing slash.")
+
+
 (setq package-archives '(("sunrise" . "http://joseito.republika.pl/sunrise-commander/")
                          ("elpa" . "http://tromey.com/elpa/")
                          ("gnu" . "http://elpa.gnu.org/packages/")
@@ -42,6 +48,31 @@
 (use-package cyberpunk-theme
   :ensure cyberpunk-theme)
 
+(use-package files
+  :config
+  (progn
+    (setq auto-save-file-name-transforms `((".*" ,my:backup-directory t))
+          auto-save-list-file-prefix my:backup-directory
+          backup-directory-alist `(("." . ,my:backup-directory))
+          auto-save-default t
+          auto-save-interval 200
+          auto-save-timeout 20
+          backup-by-copying t
+          delete-by-moving-to-trash t
+          delete-old-versions t
+          kept-new-versions 20
+          kept-old-versions 0
+          make-backup-files t
+          version-control t)
+    (defun force-backup-of-buffer ()
+      "Reset `buffer-backed-up' to nil."
+      (setq buffer-backed-up nil))
+    ;; Always create backups on save:
+    (add-hook 'before-save-hook #'delete-trailing-whitespace)
+    (add-hook 'before-save-hook #'force-backup-of-buffer)))
+
+
+
 (use-package flycheck
   :ensure flycheck
   :config
@@ -72,7 +103,10 @@
     (global-flycheck-mode 1)))
 
 (use-package go-mode
-  :ensure go-mode)
+  :ensure go-mode
+  :config
+  (progn
+    (setq default-tab-width 2)))
 
 ;; this is for the autocomplete for commands
 (use-package ido
@@ -92,6 +126,17 @@
     (ido-everywhere 1)
     (ido-vertical-mode 1)
     (flx-ido-mode 1)))
+
+(use-package multi-web-mode
+	:if (not noninteractive)
+	:ensure multi-web-mode
+	:config (progn
+						(setq mweb-default-major-mode 'html-mode)
+						(setq mweb-tags '((php-mode "<\\?php\\|<\\? \\|<\\?=" "\\?>")
+															(js-mode "<script +\\(type=\"text/javascript\"\\|language=\"javascript\"\\)[^>]*>" "</script>")
+															(css-mode "<style +type=\"text/css\"[^>]*>" "</style>")))
+						(setq mweb-filename-extensions '("php" "htm" "html" "ctp" "phtml" "php4" "php5"))
+						(multi-web-global-mode 1)))
 
 
 (use-package powerline
@@ -182,14 +227,11 @@
   :if (not noninteractive)
   :diminish (global-whitespace-mode . " ω")
   :config (progn
-            (setq whitespace-style '(trailing tabs indentation::space face))
-            (setq whitespace-global-modes
-                  '(c-mode c++-mode clojure-mode emacs-lisp-mode js-mode php-mode
-                           python-mode lisp-mode))
-            (global-whitespace-mode 1)))
+	    (setq whitespace-style '(trailing tabs indentation::space face))
+	    (setq whitespace-global-modes
+		  '(c-mode c++-mode emacs-lisp-mode python-mode lisp-mode go-mode))
+	    (global-whitespace-mode 1)))
 
-(setq inhibit-startup-screen t
-      initial-scratch-message ""
-      use-dialog-box nil
-      x-select-enable-clipboard t
-      x-select-enable-primary t)
+
+(setq custom-file "~/.emacs.d/custom.el")
+(load custom-file 'noerror)
