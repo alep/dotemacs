@@ -6,6 +6,8 @@
   "Directory storing all backups and auto-save files.
 Must end with a trailing slash.")
 
+(setq inhibit-startup-message t)
+
 (setq package-archives '(("sunrise" . "http://joseito.republika.pl/sunrise-commander/")
                          ("elpa" . "http://tromey.com/elpa/")
                          ("gnu" . "http://elpa.gnu.org/packages/")
@@ -75,10 +77,6 @@ Must end with a trailing slash.")
   :ensure flycheck
   :config
   (progn
-    (setenv "GOPATH" (expand-file-name "~/golang/"))
-    (setenv "PATH" (concat (format "%s/bin/" (getenv "GOPATH")) ":" (getenv "PATH")))
-    (add-to-list 'load-path (format "%s/src/github.com/dougm/goflymake" (getenv "GOPATH")))
-
     ;; Add virtualenv support for checkers
     (defadvice flycheck-checker-executable
       (around python-flycheck-check-executable (checker)
@@ -116,9 +114,11 @@ Must end with a trailing slash.")
 	:mode "\\.go\\'"
 	:commands (gofmt-before-save)
 	:init (progn
-		(setenv "GOPATH" (expand-file-name "~/golang/"))
+		(setenv "GOPATH" (expand-file-name "~/golang"))
 		(setenv "PATH" (concat  (getenv "GOPATH") ":" (getenv "PATH")))
-		(setq exec-path (append exec-path (format "%s/bin/" (getenv "GOPATH")))))
+		(setq exec-path (append exec-path (list (format "%s/bin/" (getenv "GOPATH")))))
+		(setq exec-path (append exec-path '("/usr/local/go/bin/")))
+		(add-to-list 'load-path (format "%s/src/github.com/dougm/goflymake" (getenv "GOPATH"))))
 	:bind (("C-c C-r" . go-remove-unused-imports)
 	       ("M-." . godef-jump)
 	       ("M-a" . beginning-of-defun)
@@ -135,9 +135,9 @@ Must end with a trailing slash.")
 		  (unless (executable-find "goflymake")
 		    (message (shell-command-to-string "go get -u github.com/dougm/goflymake")))
 		  (unless (executable-find "oracle")
-		    (message (shell-command-to-string "go get -u code.google.com/p/rog-go/exp/cmd/oracle")))
-
+		    (message (shell-command-to-string "go get -u go get golang.org/x/tools/cmd/oracle")))
 		  (load-file (format "%s/src/golang.org/x/tools/cmd/oracle/oracle.el" (getenv "GOPATH")))
+
 		  (setq tab-width 2)
 
 		  (use-package go-eldoc
@@ -160,7 +160,6 @@ Must end with a trailing slash.")
 
 		  ;; Use goimports instead of gofmt
 		  ;; you have to install it first: see here go get golang.org/x/tools/cmd/goimports
-		  (setq godef-command "godef")
 		  (setq gofmt-command "goimports")
 		  (add-hook 'before-save-hook 'gofmt-before-save)
 		  (add-hook 'go-mode-hook #'kt/go-mode-hook)))
@@ -213,7 +212,8 @@ Must end with a trailing slash.")
       :ensure jedi)
     (setq jedi:complete-on-dot t)
     (remove-hook 'python-mode-hook 'wisent-python-default-setup)
-    (add-hook 'python-mode-hook 'jedi:setup)))
+    (add-hook 'python-mode-hook 'jedi:setup)
+    (add-hook 'python-mode-hook 'flycheck-mode)))
 
 (use-package python-django
   :if (not noninteractive)
