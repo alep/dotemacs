@@ -8,11 +8,8 @@ Must end with a trailing slash.")
 
 (setq inhibit-startup-message t)
 
-(setq package-archives '(("sunrise" . "http://joseito.republika.pl/sunrise-commander/")
-                         ("elpa" . "http://tromey.com/elpa/")
-                         ("gnu" . "http://elpa.gnu.org/packages/")
-                         ("marmalade" . "http://marmalade-repo.org/packages/")
-                         ("melpa" . "http://melpa.milkbox.net/packages/")))
+(setq package-archives '(("gnu" . "http://elpa.gnu.org/packages/")
+                         ("melpa" . "http://melpa.org/packages/")))
 
 ;; activate all the packages (in particular autoloads)
 (package-initialize)
@@ -98,14 +95,21 @@ Must end with a trailing slash.")
             ad-do-it)
         ad-do-it))
 
- (setq flycheck-mode-line-lighter " ")))
+    (setq flycheck-mode-line-lighter " ")))
 
+
+;; go get -u golang.org/x/tools/cmd/...
+;; go get -u github.com/rogpeppe/godef/...
+;; go get -u github.com/nsf/gocode
+;; go get -u golang.org/x/tools/cmd/goimports
+;; go get -u golang.org/x/tools/cmd/guru
+;; go get -u github.com/dougm/goflymake
 
 (defun kt/go-mode-hook ()
+	(setq tab-width 2)
 	(linum-mode 1)
 	(flycheck-mode)
 	(go-eldoc-setup)
-	(hideshowvis-enable)
 	(rainbow-delimiters-mode)
 	(idle-highlight-mode))
 
@@ -114,55 +118,37 @@ Must end with a trailing slash.")
 	:mode "\\.go\\'"
 	:commands (gofmt-before-save)
 	:init (progn
-		(setenv "GOPATH" (expand-file-name "~/golang"))
+		(setenv "GOPATH" (expand-file-name "~/go"))
 		(setenv "PATH" (concat  (getenv "GOPATH") ":" (getenv "PATH")))
 		(setq exec-path (append exec-path (list (format "%s/bin/" (getenv "GOPATH")))))
 		(setq exec-path (append exec-path '("/usr/local/go/bin/")))
 		(add-to-list 'load-path (format "%s/src/github.com/dougm/goflymake" (getenv "GOPATH"))))
 	:bind (("C-c C-r" . go-remove-unused-imports)
-	       ("M-." . godef-jump)
+	       ("C-." . godef-jump)
 	       ("M-a" . beginning-of-defun)
 	       ("M-e" . end-of-defun))
 	:config (progn
-		  ;; Install gocode. Needed by several packages
-		  (unless (executable-find "gocode")
-		    (message (shell-command-to-string "go get -u github.com/nsf/gocode")))
-		  ;; Grab the godef binary if necessary
-		  (unless (executable-find "godef")
-		    (message (shell-command-to-string "go get -u github.com/rogpeppe/godef"))
-		    (message (shell-command-to-string "go build github.com/rogpeppe/godef")))
-		  ;; Grab the goflymake binary if necessary
-		  (unless (executable-find "goflymake")
-		    (message (shell-command-to-string "go get -u github.com/dougm/goflymake")))
-		  (unless (executable-find "oracle")
-		    (message (shell-command-to-string "go get -u go get golang.org/x/tools/cmd/oracle")))
-		  (load-file (format "%s/src/golang.org/x/tools/cmd/oracle/oracle.el" (getenv "GOPATH")))
+						(use-package go-eldoc
+							:ensure go-eldoc)
 
-		  (setq tab-width 2)
+						;; go-autocomplete requires this thing and for some reason it
+						;; won't ask for it
+						(use-package auto-complete
+							:ensure auto-complete)
+						(require 'auto-complete-config)
+						(ac-config-default)
+						(use-package go-autocomplete
+							:ensure go-autocomplete)
 
-		  (use-package go-eldoc
-		    :ensure go-eldoc)
+						(use-package idle-highlight-mode
+							:ensure idle-highlight-mode)
 
-		  ;; go-autocomplete requires this thing and for some reason it
-		  ;; won't ask for it
-		  (use-package auto-complete
-		    :ensure auto-complete)
-		  (require 'auto-complete-config)
-		  (ac-config-default)
-		  (use-package go-autocomplete
-		    :ensure go-autocomplete)
+						;; Use goimports instead of gofmt
+						;; you have to install it first: see here go get golang.org/x/tools/cmd/goimports
+						(setq gofmt-command "goimports")
+						(add-hook 'before-save-hook 'gofmt-before-save)
+ 						(add-hook 'go-mode-hook #'kt/go-mode-hook)))
 
-		  (use-package hideshowvis
-		    :ensure hideshowvis)
-
-		  (use-package idle-highlight-mode
-		    :ensure idle-highlight-mode)
-
-		  ;; Use goimports instead of gofmt
-		  ;; you have to install it first: see here go get golang.org/x/tools/cmd/goimports
-		  (setq gofmt-command "goimports")
-		  (add-hook 'before-save-hook 'gofmt-before-save)
-		  (add-hook 'go-mode-hook #'kt/go-mode-hook)))
 
 ;; this is for the autocomplete for commands
 (use-package ido
