@@ -6,6 +6,11 @@
   "Directory storing all backups and auto-save files.
 Must end with a trailing slash.")
 
+(setq exec-path (append exec-path '("/Users/aperalta/Library/Python/3.7/bin")))
+(setq mac-option-modifier nil
+      mac-command-modifier 'meta
+      x-select-enable-clipboard t)
+
 (setq inhibit-startup-message t)
 
 (setq package-archives '(("gnu" . "http://elpa.gnu.org/packages/")
@@ -27,6 +32,8 @@ Must end with a trailing slash.")
 
 (use-package ag
   :if (not noninteractive)
+  :config (progn
+	    (setq ag-executable "/usr/local/bin/ag"))
   :ensure ag)
 
 (use-package auto-complete
@@ -41,10 +48,11 @@ Must end with a trailing slash.")
                                        ac-source-abbrev
                                        ac-source-dictionary
                                        ac-source-words-in-same-mode-buffers))
+	    (setq ac-modes (delq 'python-mode ac-modes))
             (global-auto-complete-mode 1)))
 
-(use-package cyberpunk-theme
-  :ensure cyberpunk-theme)
+(use-package material-theme
+  :ensure material-theme)
 
 (use-package files
   :config
@@ -70,32 +78,65 @@ Must end with a trailing slash.")
     (add-hook 'before-save-hook #'force-backup-of-buffer)))
 
 
-(use-package flycheck
-  :ensure flycheck
+(use-package elpy)
+(elpy-enable)
+
+(use-package pyenv-mode
+  :init
+  (add-to-list 'exec-path "~/.pyenv/shims")
+  (setenv "WORKON_HOME" "~/.pyenv/versions/")
   :config
-  (progn
-    ;; Add virtualenv support for checkers
-    (defadvice flycheck-checker-executable
-      (around python-flycheck-check-executable (checker)
-              activate compile)
-      "`flycheck-checker-executable' with virtualenv support."
-      (if (eq major-mode 'python-mode)
-          (let* ((process-environment (python-shell-calculate-process-environment))
-                 (exec-path (python-shell-calculate-exec-path)))
-            ad-do-it)
-        ad-do-it))
+  (pyenv-mode)
+  :bind
+  ("C-x p e" . pyenv-activate-current-project))
 
-    (defadvice flycheck-start-checker
-      (around python-flycheck-start-checker (checker callback)
-              activate compile)
-      "`flycheck-start-checker' with virtualenv support."
-      (if (eq major-mode 'python-mode)
-          (let* ((process-environment (python-shell-calculate-process-environment))
-                 (exec-path (python-shell-calculate-exec-path)))
-            ad-do-it)
-        ad-do-it))
+(defun pyenv-activate-current-project ()
+  "Automatically activates pyenv version if .python-version file exists."
+  (interactive)
+  (let ((python-version-directory (locate-dominating-file (buffer-file-name) ".python-version")))
+    (if python-version-directory
+        (let* ((pyenv-version-path (f-expand ".python-version" python-version-directory))
+               (pyenv-current-version (s-trim (f-read-text pyenv-version-path 'utf-8))))
+          (pyenv-mode-set pyenv-current-version)
+          (message (concat "Setting virtualenv to " pyenv-current-version))))))
 
-    (setq flycheck-mode-line-lighter " ")))
+(defvar pyenv-current-version nil nil)
+
+(defun pyenv-init()
+  "Initialize pyenv's current version to the global one."
+  (let ((global-pyenv (replace-regexp-in-string "\n" "" (shell-command-to-string "pyenv global"))))
+    (message (concat "Setting pyenv version to " global-pyenv))
+    (pyenv-mode-set global-pyenv)
+    (setq pyenv-current-version global-pyenv)))
+
+(add-hook 'after-init-hook 'pyenv-init)
+
+;; (use-package flycheck
+;;   :ensure flycheck
+;;   :config
+;;   (progn
+;;     ;; Add virtualenv support for checkers
+;;     (defadvice flycheck-checker-executable
+;;       (around python-flycheck-check-executable (checker)
+;;               activate compile)
+;;       "`flycheck-checker-executable' with virtualenv support."
+;;       (if (eq major-mode 'python-mode)
+;;           (let* ((process-environment (python-shell-calculate-process-environment))
+;;                  (exec-path (python-shell-calculate-exec-path)))
+;;             ad-do-it)
+;;         ad-do-it))
+
+;;     (defadvice flycheck-start-checker
+;;       (around python-flycheck-start-checker (checker callback)
+;;               activate compile)
+;;       "`flycheck-start-checker' with virtualenv support."
+;;       (if (eq major-mode 'python-mode)
+;;           (let* ((process-environment (python-shell-calculate-process-environment))
+;;                  (exec-path (python-shell-calculate-exec-path)))
+;;             ad-do-it)
+;;         ad-do-it))
+
+;;     (setq flycheck-mode-line-lighter " ")))
 
 
 ;; go get -u golang.org/x/tools/cmd/...
@@ -189,22 +230,27 @@ Must end with a trailing slash.")
   :if (not noninteractive)
   :diminish projectile-mode
   :ensure projectile
-  :config (projectile-global-mode 1))
-
-(use-package python
   :config
   (progn
-    (use-package jedi
-      :ensure jedi)
-    (setq jedi:complete-on-dot t)
-    (remove-hook 'python-mode-hook 'wisent-python-default-setup)
-    (add-hook 'python-mode-hook 'jedi:setup)
-    (add-hook 'python-mode-hook 'flycheck-mode)))
+    (projectile-global-mode 1)
+    (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+    (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map))
+  )
 
-(use-package python-django
-  :if (not noninteractive)
-  :bind ("C-x j" . python-django-open-project)
-  :ensure python-django)
+;; (use-package python
+;;   :config
+;;   (progn
+;;     (use-package jedi
+;;       :ensure jedi)
+;;     (setq jedi:complete-on-dot t)
+;;     (remove-hook 'python-mode-hook 'wisent-python-default-setup)
+;;     (add-hook 'python-mode-hook 'jedi:setup)
+;;     (add-hook 'python-mode-hook 'flycheck-mode)))
+
+;; (use-package python-django
+;;   :if (not noninteractive)
+;;   :bind ("C-x j" . python-django-open-project)
+;;   :ensure python-django)
 
 (use-package magit
   :if (not noninteractive)
@@ -275,5 +321,12 @@ Must end with a trailing slash.")
 	    (global-whitespace-mode 1)))
 
 
-(setq custom-file "~/.emacs.d/custom.el")
+(use-package org
+  :config (progn
+	    (org-agenda-files (list "~/org/shipping.org"
+				    "~/org/personal.org"))))
+
+
+
+(setq custom-file "~/.emacs.d/custokm.el")
 (load custom-file 'noerror)
